@@ -1,5 +1,6 @@
 ## POC using dotnet-svcutil and .Net core for SOAP
 
+*Internal TLSProvisioning lib now has the the generated code for the soap api*
 
 Install dotnet-svcutil using:
 ```
