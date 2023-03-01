@@ -3,25 +3,30 @@ using SFMC.TLSProvisioning.MarketingCloud;
 using SFMC.TLSProvisioning.MarketingCloud.SoapApi;
 class Program
 {
-    static string user_name = Environment.GetEnvironmentVariable("api_user_name");
-    static string password = Environment.GetEnvironmentVariable("api_user_password");
-    static string soap_url = Environment.GetEnvironmentVariable("soap_endpoint");
+    static string user_name = Environment.GetEnvironmentVariable("api_user_name") ?? "";
+    static string password = Environment.GetEnvironmentVariable("api_user_password") ?? "";
+    static string soap_url = Environment.GetEnvironmentVariable("soap_endpoint") ?? "";
 
+    const string deName = "TEST_SOAP_LIB";
+
+    static IDataExtensionServiceOptions options = new DataExtensionServiceOptions(user_name, password, soap_url);
+    static DataExtensionService service = new DataExtensionService(options);
 
     static async Task Main(string[] args)
     {
+        await TestReadAll();
         await TestAnUpsert();
-
+        await TestReadAll();
         await TestBatchDelete();
+        await TestReadAll();
 
+
+        Console.WriteLine("**********\nDemo Filtered\n********");
+
+        await TestReadFiltered();
     }
 
     static async Task TestAnUpsert(){
-        var options = new DataExtensionServiceOptions(user_name, password, soap_url);
-        var service = new DataExtensionService(options);
-
-        var deName = "TEST_SOAP_LIB";
-
         var objs = new List<Dictionary<string, string>>{
             new Dictionary<string, string>{
                 {"SubscriberKey", "jnolen+soap1@gmail.com"},
@@ -46,11 +51,6 @@ class Program
     }
 
     static async Task TestBatchDelete() {
-        var options = new DataExtensionServiceOptions(user_name, password, soap_url);
-        var service = new DataExtensionService(options);
-
-        var deName = "TEST_SOAP_LIB";
-
         var objs = new List<Dictionary<string, string>>{
             new Dictionary<string, string>{
                 {"SubscriberKey", "jon.nolen+soap666@gmail.com"}
@@ -65,4 +65,31 @@ class Program
         Console.WriteLine($"Batch Delete result: {result.OverallStatus}");
     }
 
+    static async Task TestReadAll(){
+        var results = await service.ReadAsync(deName, new string[]{"SubscriberKey", "ExpirationDate", "EID"});
+
+        Console.WriteLine("Read All:");
+        PrintResults(results);
+    }
+
+    static async Task TestReadFiltered(){
+        var filter = new SimpleFilterPart(){
+            Property = "EID",
+            SimpleOperator = SimpleOperators.equals,
+            Value = new string[]{ "1237" }
+        };
+
+        var results = await service.ReadAsync(deName, new string[]{"SubscriberKey", "ExpirationDate", "EID"}, filter);
+        Console.WriteLine("Read Filtered: ");
+        PrintResults(results);
+    }
+
+    static void PrintResults(List<DataExtensionObject> results) {
+         foreach (var r in results) {
+            Console.WriteLine("\tobj:");
+            foreach (var p in r.Properties) {
+                Console.WriteLine($"\t\t{p.Name}: {p.Value}");
+            }
+        }
+    }
 }
