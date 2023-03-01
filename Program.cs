@@ -1,10 +1,6 @@
-﻿using Newtonsoft.Json;
-using System.Text;
-using System.ServiceModel.Channels;
-
-namespace MCSDKTest;
-
-
+﻿namespace MCSDKTest;
+using SFMC.TLSProvisioning.MarketingCloud;
+using SFMC.TLSProvisioning.MarketingCloud.SoapApi;
 class Program
 {
     static string user_name = Environment.GetEnvironmentVariable("api_user_name");
@@ -14,34 +10,59 @@ class Program
 
     static async Task Main(string[] args)
     {
-        Console.WriteLine("Hello, World!");
-        await MakeSoapRequest();
+        await TestAnUpsert();
+
+        await TestBatchDelete();
+
     }
 
-    static async Task MakeSoapRequest(){
+    static async Task TestAnUpsert(){
+        var options = new DataExtensionServiceOptions(user_name, password, soap_url);
+        var service = new DataExtensionService(options);
 
-        System.ServiceModel.BasicHttpBinding binding = new System.ServiceModel.BasicHttpBinding();
-        binding.Security.Mode = System.ServiceModel.BasicHttpSecurityMode.TransportWithMessageCredential;
-        binding.Security.Message.ClientCredentialType = System.ServiceModel.BasicHttpMessageCredentialType.UserName;
-        binding.ReceiveTimeout = new TimeSpan(0,5,0);
-        binding.OpenTimeout = new TimeSpan(0,5,0);
-        binding.CloseTimeout = new TimeSpan(0,5,0);
-        binding.SendTimeout = new TimeSpan(0,5,0);
+        var deName = "TEST_SOAP_LIB";
 
-        var address = new System.ServiceModel.EndpointAddress(soap_url);
-        var sc = new ServiceReference.SoapClient(binding, address);
+        var objs = new List<Dictionary<string, string>>{
+            new Dictionary<string, string>{
+                {"SubscriberKey", "jnolen+soap1@gmail.com"},
+                {"ExpirationDate", DateTime.Now.ToUniversalTime().ToString("o") },
+                {"EID", "10001"}
+            },
+            new Dictionary<string, string>{
+                {"SubscriberKey", "jon.nolen+soap666@gmail.com"},
+                {"ExpirationDate", DateTime.Now.ToUniversalTime().ToString("o")},
+                {"EID", "10002"}
+            },
+            new Dictionary<string, string>{
+                {"SubscriberKey", "jon.nolen+soap667@gmail.com"},
+                {"ExpirationDate", DateTime.Now.ToUniversalTime().ToString("o")},
+                {"EID", "10003"}
+            }
+        };
 
-        sc.ClientCredentials.UserName.UserName = user_name;
-        sc.ClientCredentials.UserName.Password = password;
+        var result = await service.UpsertAsync(deName, objs);
 
-
-        var deRequest = new ServiceReference.RetrieveRequest();
-
-        deRequest.ObjectType = "DataExtensionObject[EIDEmailMapping_DE]";
-        deRequest.Properties = new string[] { "Email", "EID", "ID" };
-
-        var result = await sc.RetrieveAsync(new ServiceReference.RetrieveRequest1(deRequest));
-
-        Console.WriteLine(result);
+        Console.WriteLine($"Upsert Result: {result.OverallStatus}");
     }
+
+    static async Task TestBatchDelete() {
+        var options = new DataExtensionServiceOptions(user_name, password, soap_url);
+        var service = new DataExtensionService(options);
+
+        var deName = "TEST_SOAP_LIB";
+
+        var objs = new List<Dictionary<string, string>>{
+            new Dictionary<string, string>{
+                {"SubscriberKey", "jon.nolen+soap666@gmail.com"}
+            },
+            new Dictionary<string, string>{
+                {"SubscriberKey", "jon.nolen+soap667@gmail.com"}
+            }
+        };
+
+        var result = await service.DeleteAsync(deName, objs);
+
+        Console.WriteLine($"Batch Delete result: {result.OverallStatus}");
+    }
+
 }
